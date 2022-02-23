@@ -30,14 +30,21 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--arch', type=str, default='RGNN',
                    help='Architectures')
-parser.add_argument('--num_classes', type=int, default=3,
+parser.add_argument('--num_classes', type=int, default=4,
                    help='Num outputs for dataset')
+parser.add_argument('--lr', type=float, default=1e-4,
+                   help='Learning rate for parameters, used for baselines')
+# Paths.
+parser.add_argument('--dataset', type=str, default='SEEDIV',
+                    help='Name of dataset')
+parser.add_argument('--data_path', type=str, default='Data/{dataset}/',
+                    help='Name of dataset')
+
 parser.add_argument('--num_layer', type=int, default=2,
                    help='Num layers of GCN')
 
 # Universal parameters
-parser.add_argument('--lr', type=float, default=1e-4,
-                   help='Learning rate for parameters, used for baselines')
+
 parser.add_argument('--weight_decay', type=float, default=4e-5,
                    help='Weight decay for parameters, used for baselines')
 parser.add_argument('--train_batch_size', type=int, default=16,
@@ -57,18 +64,12 @@ parser.add_argument('--feature', type=str, default='de_LDS{}',
 parser.add_argument('--freq_num', type=int, default=5,
                    help='number of freq bands used')
 parser.add_argument('--max_size', type=int, default=64, help='the maximum length in all trails')   #64 for SEEDIV   265 for SEED
-parser.add_argument('--mode', type=str, default='',
+parser.add_argument('--mode', type=str, default='RevGrad',
                     choices=['RevGrad', ''],
                    help='Gan mode')
 parser.add_argument('--sample_mode', type=str, default='Series_process',
                     choices=['Sample_process', 'Series_process'],
                    help='mode of input data processing')
-
-# Paths.
-parser.add_argument('--dataset', type=str, default='SEED',
-                    help='Name of dataset')
-parser.add_argument('--data_path', type=str, default='Data/{dataset}/',
-                    help='Name of dataset')
 
 
 # Other.
@@ -81,10 +82,6 @@ parser.add_argument('--checkpoint_format', type=str,
                     help='checkpoint file format')
 parser.add_argument('--epochs', type=int, default=2000,
                     help='number of epochs to train')
-parser.add_argument('--save_folder', type=str, default= 'checkpoints/CPG/experiment3/spherenet20/emotion/gradual_prune/0.1',
-                    help='folder name inside one_check folder')
-parser.add_argument('--load_folder', default='checkpoints/CPG/experiment3/spherenet20/emotion/scratch',
-                    help='')
 
 #}}}
 
@@ -96,8 +93,8 @@ def main():
 
 
 
-    train_loader = dataset.train_loader(args,'train', index = 2, session = 1)   #index means trails order [0,24] & [0,15]
-    test_loader  = dataset.test_loader(args, 'test',  index = 2, session = 1)   #session means 3 sessions
+    train_loader = dataset.train_loader(args,'train', index = 1, session = 1)   # index means trails order [0,24] & [0,15]
+    test_loader  = dataset.test_loader(args, 'test',  index = 1, session = 1)   # session means 3 sessions (data dir name)
 
     if args.sample_mode == "Sample_process":
         feature_dim = args.freq_num
