@@ -34,12 +34,15 @@ parser.add_argument('--num_classes', type=int, default=4,
                    help='Num outputs for dataset')
 parser.add_argument('--lr', type=float, default=1e-4,
                    help='Learning rate for parameters, used for baselines')
+parser.add_argument('--train_pattern', type=str, default='SD',
+                    choices=['SD', 'SI'],
+                   help='subject_dependent or subject independent')
+
 # Paths.
 parser.add_argument('--dataset', type=str, default='SEEDIV',
                     help='Name of dataset')
 parser.add_argument('--data_path', type=str, default='Data/{dataset}/',
                     help='Name of dataset')
-
 parser.add_argument('--num_layer', type=int, default=2,
                    help='Num layers of GCN')
 
@@ -67,7 +70,7 @@ parser.add_argument('--max_size', type=int, default=64, help='the maximum length
 parser.add_argument('--mode', type=str, default='RevGrad',
                     choices=['RevGrad', ''],
                    help='Gan mode')
-parser.add_argument('--sample_mode', type=str, default='Series_process',
+parser.add_argument('--sample_mode', type=str, default='Sample_process',
                     choices=['Sample_process', 'Series_process'],
                    help='mode of input data processing')
 
@@ -91,10 +94,9 @@ def main():
     global feature_dim
     args = parser.parse_args()
 
-
-
-    train_loader = dataset.train_loader(args,'train', index = 1, session = 1)   # index means trails order [0,24] & [0,15]
-    test_loader  = dataset.test_loader(args, 'test',  index = 1, session = 1)   # session means 3 sessions (data dir name)
+    session = 1
+    train_loader = dataset.train_loader(args,'train', index = 1, session = session)   # index means trails order [0,24] & [0,15]
+    test_loader  = dataset.test_loader(args, 'test',  index = 1, session = session)   # session means 3 sessions (data dir name)
 
     if args.sample_mode == "Sample_process":
         feature_dim = args.freq_num

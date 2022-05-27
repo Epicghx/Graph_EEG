@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="root@192.168.192.63:15873 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="Graph_EEG" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="root@192.168.192.63:15873 password">
+      <paths name="Graph_EEG">
         <serverdata>
           <mappings>
-            <mapping deploy="/export/.ghx/code/Graph_EEG" local="$PROJECT_DIR$" />
+            <mapping deploy="/export/.ghx/code/Graph_EEG" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@sshConfig://root@10.242.177.207:15873 password/root/anaconda3/envs/GCN/bin/python">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/export/.ghx/code/Graph_EEG" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@sshConfig://root@192.168.192.63:15873 password/root/anaconda3/envs/gcn/bin/python">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/export/.ghx/code/Graph_EEG" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>

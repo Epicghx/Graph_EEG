@@ -77,22 +77,18 @@ class NewSGConv(SGConv):
 
     def forward(self, x, edge_index, edge_weight=None):
         """"""
-        alpha = 0.10
         if not self.cached or self.cached_result is None:
             edge_index, norm = NewSGConv.norm(
                 edge_index, x.size(0), edge_weight, dtype=x.dtype)
-            emb = alpha * x
+
             for k in range(self.K):
-                ipdb.set_trace()
                 x = self.propagate(edge_index, x=x, norm=norm)
-                emb = emb + (1 - alpha) * x / self.K
-            self.cached_result = emb
+            self.cached_result = x
         return self.lin(self.cached_result)
 
     def message(self, x_j, norm):
         # x_j: (batch_size*num_nodes*num_nodes, num_features)
         # norm: (batch_size*num_nodes*num_nodes, )
-        # ipdb.set_trace()
         return norm.view(-1, 1) * x_j
 
 
@@ -125,34 +121,42 @@ class SymSimGCNNet(torch.nn.Module):
         self.domain_adaptation = domain_adaptation
         self.num_nodes = num_nodes
         self.xs, self.ys = torch.tril_indices(self.num_nodes, self.num_nodes, offset=0)
-        edge_weight = edge_weight.reshape(self.num_nodes, self.num_nodes)[self.xs, self.ys] # strict lower triangular values
+        # edge_weight = edge_weight.reshape(self.num_nodes, self.num_nodes)[self.xs, self.ys] # strict lower triangular values
+        # self.edge_weight = nn.Parameter(edge_weight, requires_grad=learn_edge_weight)
+        edge_weight = edge_weight.reshape(self.num_nodes, self.num_nodes, 5)[self.xs, self.ys] # strict lower triangular values
         self.edge_weight = nn.Parameter(edge_weight, requires_grad=learn_edge_weight)
         self.dropout = dropout
         self.conv1 = NewSGConv(num_features=num_features, num_classes=num_hiddens[0], K=K)
-        self.fc = nn.Linear(num_hiddens[0], num_classes)
+        self.fc = nn.Linear(num_hiddens[0]*5, num_classes)
         if self.domain_adaptation in ["RevGrad"]:
             self.domain_classifier = nn.Linear(num_hiddens[0], 2)
 
     def forward(self, data, alpha=0):
         batch_size = len(data.y)
-        x, edge_index = data.x, data.edge_index   #edge_index: 2x16x62x62
-        edge_weight = torch.zeros((self.num_nodes, self.num_nodes), device=edge_index.device)
-        edge_weight[self.xs.to(edge_weight.device), self.ys.to(edge_weight.device)] = self.edge_weight
-        edge_weight = edge_weight + edge_weight.transpose(1,0) - torch.diag(edge_weight.diagonal()) # copy values from lower tri to upper tri
-        edge_weight = edge_weight.reshape(-1).repeat(batch_size)
-        x = F.relu(self.conv1(x, edge_index, edge_weight))
-        # domain classification
-        domain_output = None
-        if self.domain_adaptation in ["RevGrad"]:
-            reverse_x = ReverseLayerF.apply(x, alpha)
-            domain_output = self.domain_classifier(reverse_x)
-        x = global_add_pool(x, data.batch, size=batch_size)
-        x = F.dropout(x, p=self.dropout, training=self.training)
+        input, edge_index = data.x, data.edge_index
+        # ipdb.set_trace()
+        SGC_output = []
+        for i in range(5):
+            x = input[:, i].unsqueeze(1)
+            edge_weight = torch.zeros((self.num_nodes, self.num_nodes), device=edge_index.device)
+            edge_weight[self.xs.to(edge_weight.device), self.ys.to(edge_weight.device)] = self.edge_weight[:,i]
+            edge_weight = edge_weight + edge_weight.transpose(1,0) - torch.diag(edge_weight.diagonal()) # copy values from lower tri to upper tri
+            edge_weight = edge_weight.reshape(-1).repeat(batch_size)
+            x = F.relu(self.conv1(x, edge_index, edge_weight))
+            # domain classification
+            domain_output = None
+            if self.domain_adaptation in ["RevGrad"]:
+                reverse_x = ReverseLayerF.apply(x, alpha)
+                domain_output = self.domain_classifier(reverse_x)
+            x = global_add_pool(x, data.batch, size=batch_size)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+            SGC_output.append(x)
         # x = F.softmax(self.fc(x), dim=0)
+        x = torch.cat(SGC_output, axis=1)
         x = self.fc(x)
         return x, domain_output
 
-def RGNN( num_nodes, learn_edge_weight, edge_weight, num_features, num_hiddens, num_classes, K, dropout, mode):
+def RGNN_freq( num_nodes, learn_edge_weight, edge_weight, num_features, num_hiddens, num_classes, K, dropout, mode):
 
     return SymSimGCNNet(num_nodes, learn_edge_weight, edge_weight, num_features, num_hiddens, num_classes, K, dropout, mode)
 
