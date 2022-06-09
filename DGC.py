@@ -34,11 +34,11 @@ device = torch.device('cuda:0')
 warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--arch', type=str, default='GDC',
+parser.add_argument('--arch', type=str, default='RGDC',
                    help='Architectures')
 parser.add_argument('--num_classes', type=int, default=3,
                    help='Num outputs for dataset')
-parser.add_argument('--lr', type=float, default=5e-3,
+parser.add_argument('--lr', type=float, default=0.005,
                    help='Learning rate for parameters, used for baselines')
 parser.add_argument('--train_pattern', type=str, default='SD',
                     choices=['SD', 'SI'],
@@ -63,7 +63,7 @@ parser.add_argument('-b', '--train_batch_size', type=int, default=16,
 parser.add_argument('-vb', '--val_batch_size', type=int, default=16,
                    help='input batch size for validation')
 parser.add_argument('--workers', type=int, default=8, help='')
-parser.add_argument('--dropout', type=float, default=0,
+parser.add_argument('--dropout', type=float, default=0.7,
                    help='Dropout rate')
 parser.add_argument('--channel', type=float, default=62,
                    help='channel numbers of features')
@@ -138,12 +138,12 @@ def main(args, subject, session):
     best_acc = 0
 
     for epoch_idx in range(args.epochs):
-        warm_up = np.min([1.0, (epoch_idx+1)/20])
+        # warm_up = np.min([1.0, (epoch_idx+1)/20])
         # writer.add_histogram('sgc', model.conv1.lin.weight.reshape(-1))
         # writer.add_histogram('edge', model.edge_weight)
         # writer.add_histogram('fc', model.fc.weight)
-        avg_train_acccuracy = manager.train(optimizer, warm_up=warm_up)
-        avg_test_accuracy   = manager.eval(warm_up=warm_up)
+        avg_train_acccuracy = manager.train(optimizer)
+        avg_test_accuracy   = manager.eval()
         # scheduler.step()
         if avg_test_accuracy >= best_acc:
             best_acc = avg_test_accuracy

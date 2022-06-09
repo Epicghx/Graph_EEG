@@ -83,6 +83,8 @@ class SDdataset(Dataset):
         tmp = sio.loadmat(args.data_path.format(dataset=args.dataset) +'initial_A_62x62.mat')
         self.adj = torch.from_numpy(tmp['initial_A']).float()
         self.edge_index = torch.from_numpy(tmp['initial_weight_index']).long()
+        # self.adj[:, :] = 0.5
+        # self.adj = self.adj + 0.5 * torch.eye(self.adj.size(0))
         if args.arch == 'GCN_Net':
             self.adj[:, :] = 0.5
 

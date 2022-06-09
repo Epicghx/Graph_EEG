@@ -83,7 +83,6 @@ class NewSGConv(SGConv):
                 edge_index, x.size(0), edge_weight, dtype=x.dtype)
             emb = alpha * x
             for k in range(self.K):
-                ipdb.set_trace()
                 x = self.propagate(edge_index, x=x, norm=norm)
                 emb = emb + (1 - alpha) * x / self.K
             self.cached_result = emb

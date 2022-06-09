@@ -37,10 +37,11 @@ from torch_geometric.nn import SGConv, global_add_pool
 #     torch.cuda.manual_seed(seed)
 
 
-class GraphConvolution(SGConv):
+class GraphConvolution(nn.Module):
 
-    def __init__(self, in_features, out_features, cached=False, bias=True):
-        super(GraphConvolution, self).__init__(in_features, out_features, K=1, cached=cached, bias=bias)
+    def __init__(self, in_features, out_features, bias=True):
+        super(GraphConvolution, self).__init__()
+        # super(GraphConvolution, self).__init__(in_features, out_features, K=1, cached=cached, bias=bias)
         self.in_features = in_features
         self.out_features = out_features
         # self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
@@ -52,93 +53,50 @@ class GraphConvolution(SGConv):
         self.reset_parameters()
 
     def reset_parameters(self):
-        stdv = 1. / math.sqrt(self.lin.weight.size(1))
-        # torch.nn.init.normal_(tensor=self.weight, std=stdv)
-        torch.nn.init.normal_(tensor=self.lin.weight, std=stdv)
+        # stdv = 1. / math.sqrt(self.lin.weight.size(1))
+        stdv = 1. / math.sqrt(self.W.weight.size(1))
+        # torch.nn.init.normal_(tensor=self.W.weight, std=stdv)
+        torch.nn.init.normal_(tensor=self.W.weight, std=stdv)
         # self.W.weight.data.uniform_(-stdv, stdv)
         # self.W.bias.data.uniform_(-stdv, stdv)
-        if self.lin.bias is not None:
-            self.lin.bias.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+        # if self.lin.bias is not None:
+        #     self.lin.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, x, batch_size, adj=None):
         # support = torch.mm(input, self.weight)
         # output = torch.mm(adj, support)
-        # if self.bias is not None:
-        #     return output + self.bias
-        # else:
+        support = self.W(x)          # input in GDC means raw features, AWX
+        output = torch.matmul(adj, support.reshape(batch_size, adj.size(0), -1)).reshape(x.size(0), -1)
+        if self.bias is not None:
+            return output + self.bias
+        else:
+            return output
+        # alpha = 0.10
+        # if not self.cached or self.cached_result is None:
+        #     # edge_index, norm = SGC.norm(
+        #     #     edge_index, x.size(0), edge_weight, dtype=x.dtype)
+        #     # emb = alpha * x
+        #     for k in range(self.K):
+        #         # ipdb.set_trace()
+        #         x = self.propagate(edge_index, x=x, norm=edge_weight)
+        #         # emb = emb + (1 - alpha) * x / self.K
+        #     # self.cached_result = emb
+        #     self.cached = x
+        #     output = self.lin(self.cached_result)
+        #     # ipdb.set_trace()
+        #     # if self.lin.bias is not None:
+        #     #     return output + self.lin.bias
+        #     # else:
         #     return output
-        # support = self.W(input)
-        # output = torch.spmm(adj, support)
-        alpha = 0.10
-        if not self.cached or self.cached_result is None:
-            # edge_index, norm = SGC.norm(
-            #     edge_index, x.size(0), edge_weight, dtype=x.dtype)
-            emb = alpha * x
-            for k in range(self.K):
-                # ipdb.set_trace()
-                x = self.propagate(edge_index, x=x, norm=edge_weight)
-                emb = emb + (1 - alpha) * x / self.K
-            self.cached_result = emb
-            output = self.lin(self.cached_result)
-            if self.lin.bias is not None:
-                return output + self.bias
-            else:
-                return output
 
 
-    def message(self, x_j, norm):
-        # x_j: (batch_size*num_nodes*num_nodes, num_features)
-        # norm: (batch_size*num_nodes*num_nodes, )
-        # ipdb.set_trace()
-        return norm.view(-1, 1) * x_j
-
-    def __repr__(self):
-        return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> ' + str(self.out_features) + ')'
-
-
-class SGC(SGConv):
-
-    def __init__(self, nfeat, nclass):
-        super(SGC, self).__init__()
-        self.in_features = nfeat
-        self.out_features = nclass
-
-    @staticmethod
-    def norm(edge_index, num_nodes, edge_weight, improved=False, dtype=None):
-        if edge_weight is None:
-            edge_weight = torch.ones((edge_index.size(1),),
-                                     dtype=dtype,
-                                     device=edge_index.device)
-
-        fill_value = 1 if not improved else 2
-        edge_index, edge_weight = add_remaining_self_loops(
-            edge_index, edge_weight, fill_value, num_nodes)
-        row, col = edge_index
-        deg = scatter_add(torch.abs(edge_weight), row, dim=0, dim_size=num_nodes)
-        deg_inv_sqrt = deg.pow(-0.5)
-        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-
-        return edge_index, deg_inv_sqrt[row] * edge_weight * deg_inv_sqrt[col]
-
-    def forward(self, x, edge_index, edge_weight=None):
-        """"""
-        alpha = 0.10
-        if not self.cached or self.cached_result is None:
-            edge_index, norm = SGC.norm(
-                edge_index, x.size(0), edge_weight, dtype=x.dtype)
-            emb = alpha * x
-            for k in range(self.K):
-                # ipdb.set_trace()
-                x = self.propagate(edge_index, x=x, norm=norm)
-                emb = emb + (1 - alpha) * x / self.K
-            self.cached_result = emb
-        return self.lin(self.cached_result)
-
-    def message(self, x_j, norm):
-        # x_j: (batch_size*num_nodes*num_nodes, num_features)
-        # norm: (batch_size*num_nodes*num_nodes, )
-        # ipdb.set_trace()
-        return norm.view(-1, 1) * x_j
+    # def message(self, x_j, norm):
+    #     # x_j: (batch_size*num_nodes*num_nodes, num_features)
+    #     # norm: (batch_size*num_nodes*num_nodes, )
+    #     # ipdb.set_trace()
+    #     return norm.view(-1, 1) * x_j
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> ' + str(self.out_features) + ')'
@@ -167,7 +125,7 @@ class BBGDC(nn.Module):
             u = u.cuda()
         return (1 - u.pow_(1. / b)).pow_(1. / a)
 
-    def get_weight(self, num_samps, batch_size, training, samp_type='rel_ber'):
+    def get_weight(self, num_samps, training, samp_type='rel_ber'):
         temp = torch.Tensor([0.67])
         if torch.cuda.is_available():
             temp = temp.cuda()
@@ -194,38 +152,6 @@ class BBGDC(nn.Module):
         kld = (self.kl_scale) * kld.sum()
         return kld
 
-def maybe_num_nodes(index, num_nodes=None):
-    return index.max().item() + 1 if num_nodes is None else num_nodes
-
-
-def add_remaining_self_loops(edge_index,
-                             edge_weight=None,
-                             fill_value=1,
-                             num_nodes=None):
-    num_nodes = maybe_num_nodes(edge_index, num_nodes)
-    row, col = edge_index
-
-    mask = row != col   # non-diag
-    inv_mask = ~mask    # diag
-    loop_weight = torch.full(
-        (num_nodes, ),
-        fill_value,
-        dtype=None if edge_weight is None else edge_weight.dtype,
-        device=edge_index.device)
-
-    if edge_weight is not None:
-        assert edge_weight.numel() == edge_index.size(1)
-        remaining_edge_weight = edge_weight[inv_mask]   # diag value
-        if remaining_edge_weight.numel() > 0:
-            loop_weight[row[inv_mask]] = remaining_edge_weight
-        edge_weight = torch.cat([edge_weight[mask], loop_weight], dim=0)  #拼接，diag数据在末尾992个
-
-    loop_index = torch.arange(0, num_nodes, dtype=row.dtype, device=row.device)
-    loop_index = loop_index.unsqueeze(0).repeat(2, 1)
-    edge_index = torch.cat([edge_index[:, mask], loop_index], dim=1)
-
-    return edge_index, edge_weight
-
 class GDC(nn.Module):
     def __init__(self, nfeat_list, adj, dropout, nblock, nlay, num_nodes):
         super(GDC, self).__init__()
@@ -241,7 +167,7 @@ class GDC(nn.Module):
         self.xs, self.ys = torch.tril_indices(self.num_nodes, self.num_nodes, offset=0)
         edge_weight = adj.reshape(self.num_nodes, self.num_nodes)[
             self.xs, self.ys]  # strict lower triangular values
-        self.edge_weight = nn.Parameter(edge_weight, requires_grad=False)
+        self.edge_weight = nn.Parameter(edge_weight, requires_grad=True)
 
         gcs_list = []
         idx = 0
@@ -261,23 +187,16 @@ class GDC(nn.Module):
         self.nfeat_list = nfeat_list
 
     @staticmethod
-    def norm(edge_index, num_nodes, edge_weight, improved=False, dtype=None):
-        if edge_weight is None:
-            edge_weight = torch.ones((edge_index.size(1),),
-                                     dtype=dtype,
-                                     device=edge_index.device)
+    def norm(edge_weight):
+        deg = abs(edge_weight).sum(1)
+        d_inv_sqrt = deg.pow(-0.5)
+        d_inv_sqrt[d_inv_sqrt == float('inf')] = 0
+        d_inv_sqrt[d_inv_sqrt == float('nan')] = 0
+        d_mat_inv_sqrt = torch.diag(d_inv_sqrt)
+        ipdb.set_trace()
+        return d_mat_inv_sqrt.mm(edge_weight).mm(d_mat_inv_sqrt)
 
-        fill_value = 1 if not improved else 2
-        edge_index, edge_weight = add_remaining_self_loops(
-            edge_index, edge_weight, fill_value, num_nodes)
-        row, col = edge_index
-        deg = scatter_add(torch.abs(edge_weight), row, dim=0, dim_size=num_nodes)
-        deg_inv_sqrt = deg.pow(-0.5)
-        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-
-        return edge_index, deg_inv_sqrt[row] * edge_weight * deg_inv_sqrt[col]
-
-    def forward(self, data, training=True, mul_type='norm_sec', samp_type='rel_ber'):
+    def forward(self, data, training=True, mul_type='norm_first', samp_type='rel_ber'):
         x = data.x
         batch_size = len(data.y)
 
@@ -285,24 +204,26 @@ class GDC(nn.Module):
         edge_weight[self.xs.to(edge_weight.device), self.ys.to(edge_weight.device)] = self.edge_weight
         edge_weight = edge_weight + edge_weight.transpose(1, 0) - torch.diag(
             edge_weight.diagonal())  # copy values from lower tri to upper tri
-        adj = edge_weight
 
         kld_loss = 0.0
         drop_rates = []
         for i in range(self.nlay):
-            mask_vec, drop_prob = self.drpcons[i].get_weight(self.nblock * self.num_edges, batch_size, training, samp_type)
+            # ipdb.set_trace()
+            mask_vec, drop_prob = self.drpcons[i].get_weight(self.nblock * self.num_edges, training, samp_type)
             mask_vec = torch.squeeze(mask_vec)
             drop_rates.append(drop_prob)
             if i == 0:
                 mask_mat = torch.reshape(mask_vec[:self.num_edges], (self.num_nodes, self.num_nodes)).cuda()
 
                 if mul_type == 'norm_sec':
-                    ipdb.set_trace()
                     # adj_lay = normalize_torch(torch.mul(mask_mat, adj) + torch.eye(adj.shape[0]).cuda())
-                    edge_index, adj_lay = self.norm(data.edge_index, x.shape[0], torch.mul(mask_mat, adj).flatten().repeat(batch_size).cuda())
+                    adj_lay = self.norm(edge_weight)
                 elif mul_type == 'norm_first':
+                    adj = self.norm(edge_weight)
                     adj_lay = torch.mul(mask_mat, adj).cuda()
-                x = F.relu(self.gcs[str(i)](x, edge_index, adj_lay))
+                ipdb.set_trace()
+                x = F.relu(self.gcs[str(i)](x, batch_size, adj_lay))
+                # x = self.gcs[str(i)](x, batch_size, adj_lay)
                 x = F.dropout(x, self.dropout, training=training)
 
             else:
@@ -313,24 +234,25 @@ class GDC(nn.Module):
 
                     if mul_type == 'norm_sec':
                         # adj_lay = normalize_torch(torch.mul(mask_mat, adj) + torch.eye(adj.shape[0]).cuda())
-                        edge_index, adj_lay = self.norm(data.edge_index, x.shape[0], torch.mul(mask_mat, adj).flatten().repeat(batch_size).cuda())
+                        adj_lay = self.norm(edge_weight)
                     elif mul_type == 'norm_first':
+                        adj = self.norm(edge_weight)
                         adj_lay = torch.mul(mask_mat, adj).cuda()
 
                     if i < (self.nlay - 1):
                         if j == 0:
                             x_out = self.gcs[str((i - 1) * self.nblock + j + 1)](
-                                x[:, j * feat_pblock:(j + 1) * feat_pblock], edge_index, adj_lay)
+                                x[:, j * feat_pblock:(j + 1) * feat_pblock], batch_size, adj_lay)
                         else:
                             x_out = x_out + self.gcs[str((i - 1) * self.nblock + j + 1)](
-                                x[:, j * feat_pblock:(j + 1) * feat_pblock], edge_index, adj_lay)
+                                x[:, j * feat_pblock:(j + 1) * feat_pblock], batch_size, adj_lay)
                     else:
                         if j == 0:
                             out = self.gcs[str((i - 1) * self.nblock + j + 1)](
-                                x[:, j * feat_pblock:(j + 1) * feat_pblock], edge_index,  adj_lay)
+                                x[:, j * feat_pblock:(j + 1) * feat_pblock], batch_size, adj_lay)
                         else:
                             out = out + self.gcs[str((i - 1) * self.nblock + j + 1)](
-                                x[:, j * feat_pblock:(j + 1) * feat_pblock], edge_index, adj_lay)
+                                x[:, j * feat_pblock:(j + 1) * feat_pblock], batch_size, adj_lay)
 
                 if i < (self.nlay - 1):
                     x = x_out
@@ -338,7 +260,6 @@ class GDC(nn.Module):
                     # x = F.dropout(F.relu(x), self.dropout, training=training)
 
             kld_loss += self.drpcons[i].get_reg()
-
         output = global_add_pool(out, data.batch, size=batch_size)
         # nll_loss = self.loss(labels, output, obs_idx)
         # tot_loss = nll_loss + warm_up * kld_loss

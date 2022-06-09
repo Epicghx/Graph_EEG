@@ -113,13 +113,14 @@ class EEGprocess(object):
         Train_Label = np.concatenate(Train_Label, axis=0).reshape(-1, 1).astype(int)
         Test_Label = np.concatenate(Test_Label, axis=0).reshape(-1, 1).astype(int)
         adj = []
+        adj_freq = []
 
         # adj: dot production of raw signal
-        for i in range(Train_Data.shape[2]):
-            adj_freq = Train_Data[:,:,i].T.dot(Train_Data[:,:,i])
-            adj_freq = (adj_freq - adj_freq.min()) / (adj_freq.max() - adj_freq.min())
-            adj.append(adj_freq)
-        adj_freq = np.stack(adj)
+        # for i in range(Train_Data.shape[2]):
+        #     adj_freq = Train_Data[:,:,i].T.dot(Train_Data[:,:,i])
+        #     adj_freq = (adj_freq - adj_freq.min()) / (adj_freq.max() - adj_freq.min())
+        #     adj.append(adj_freq)
+        # adj_freq = np.stack(adj)
         return Train_Data, Test_Data, Train_Label, Test_Label, adj_freq
 
     def SD_freq_process(self, subject, session):

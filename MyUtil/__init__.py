@@ -40,8 +40,8 @@ class Optimizers(object):
 class Metric(object):
     def __init__(self, name):
         self.name = name
-        self.sum = torch.tensor(0., device='cuda:0')
-        self.n = torch.tensor(0.)
+        self.sum = torch.tensor([0.], device='cuda:0')
+        self.n = torch.tensor([0.], device='cuda:0')
         return
 
     def update(self, val, num):

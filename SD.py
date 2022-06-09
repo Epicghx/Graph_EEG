@@ -137,8 +137,8 @@ def main(args, subject, session):
         # writer.add_histogram('sgc', model.conv1.lin.weight.reshape(-1))
         # writer.add_histogram('edge', model.edge_weight)
         # writer.add_histogram('fc', model.fc.weight)
-        avg_train_acccuracy = manager.train(optimizer, epoch_idx)
-        avg_test_accuracy   = manager.eval(epoch_idx)
+        avg_train_acccuracy = manager.train(optimizer)
+        avg_test_accuracy   = manager.eval()
         # scheduler.step()
         if avg_test_accuracy >= best_acc:
             best_acc = avg_test_accuracy
